@@ -645,14 +645,16 @@ func (fh *FileHandle) readFromPreLoadData(offset int64, buf []byte) (bytesRead i
 		return
 	}
 
-	bytesRead, err = fh.dataBuffer.ReadAt(buf, offset)
+	reader := bytes.NewReader(fh.dataBuffer.Bytes()[offset:])
+	nbytesRead, err = reader.Read(buf)
 	if err != nil {
 		if err != io.EOF {
-			fh.inode.logFuse("< readFromStream error", bytesRead, err)
+			fh.inode.logFuse("< readFromPreLoadData error", bytesRead, err)
 		}
 	}
 	return
 }
+
 func (fh *FileHandle) readFromStream(offset int64, buf []byte) (bytesRead int, err error) {
 	defer func() {
 		if fh.inode.fs.flags.DebugFuse {
