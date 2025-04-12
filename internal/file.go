@@ -591,11 +591,9 @@ func (fh *FileHandle) readFile(offset int64, buf []byte) (bytesRead int, err err
 	}
 
 	preLoadData := fs.flags.PreLoadData
-	dataLength := fh.dataBuffer.Len()
-	if preLoadData && dataLength != 0 {
+	if preLoadData {
 		bytesRead, err = fh.readFromPreLoadData(offset, buf)
-	}
-	else {
+	} else {
 		bytesRead, err = fh.readFromStream(offset, buf)
 	}
 
@@ -634,7 +632,7 @@ func (fh *FileHandle) Release() {
 	}
 }
 
-func (fh *FileHandle)  readFromPreLoadData(offset int64, buf []byte) (bytesRead int, err error) {
+func (fh *FileHandle) readFromPreLoadData(offset int64, buf []byte) (bytesRead int, err error) {
 
 	defer func() {
 		if fh.inode.fs.flags.DebugFuse {
