@@ -593,8 +593,7 @@ func (fh *FileHandle) readFile(offset int64, buf []byte) (bytesRead int, err err
 	preLoadData := fs.flags.PreLoadData
 	dataLength := fh.dataBuffer.Len()
 	if preLoadData && dataLength != 0 {
-		buf = dataLength[offset: offset + ]
-
+		bytesRead, err = fh.readFromPreLoadData(offset, buf)
 	}
 	else {
 		bytesRead, err = fh.readFromStream(offset, buf)
