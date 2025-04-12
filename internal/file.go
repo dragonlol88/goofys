@@ -15,6 +15,7 @@
 package internal
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -64,6 +65,7 @@ type FileHandle struct {
 	Tgid *int32
 
 	keepPageCache bool // the same value we returned to OpenFile
+	dataBuffer    bytes.Buffer
 }
 
 const MAX_READAHEAD = uint32(400 * 1024 * 1024)
@@ -79,6 +81,24 @@ func NewFileHandle(inode *Inode, opMetadata fuseops.OpContext) *FileHandle {
 	}
 	fh := &FileHandle{inode: inode, Tgid: tgid}
 	fh.cloud, fh.key = inode.cloud()
+
+	fs := fh.inode.fs
+
+	preLoadData := fs.flags.PreLoadData
+
+	if preLoadData {
+
+		resp, err := fh.cloud.GetBlob(&GetBlobInput{
+			Key: fh.key,
+		})
+
+		if err != nil {
+			fuseLog.Errorf("Failed to load preloaded blob: %v", err)
+		}
+		// Read Data from requestBody for preloading
+		bytesRead, err := fh.dataBuffer.ReadFrom(resp.Body)
+		fh.inode.logFuse("PreLoadData", bytesRead)
+	}
 	return fh
 }
 
@@ -431,7 +451,6 @@ func (fh *FileHandle) readAhead(offset uint64, needAtLeast int) (err error) {
 	readAheadAmount := MAX_READAHEAD
 	readAheadChunk := fs.flags.ReadAheadChunk * 1024 * 1024
 
-
 	for readAheadAmount-existingReadahead >= readAheadChunk {
 		off := offset + uint64(existingReadahead)
 		remaining := fh.inode.Attributes.Size - off
@@ -571,7 +590,15 @@ func (fh *FileHandle) readFile(offset int64, buf []byte) (bytesRead int, err err
 		}
 	}
 
-	bytesRead, err = fh.readFromStream(offset, buf)
+	preLoadData := fs.flags.PreLoadData
+	dataLength := fh.dataBuffer.Len()
+	if preLoadData && dataLength != 0 {
+		buf = dataLength[offset: offset + ]
+
+	}
+	else {
+		bytesRead, err = fh.readFromStream(offset, buf)
+	}
 
 	return
 }
@@ -608,6 +635,27 @@ func (fh *FileHandle) Release() {
 	}
 }
 
+func (fh *FileHandle)  readFromPreLoadData(offset int64, buf []byte) (bytesRead int, err error) {
+
+	defer func() {
+		if fh.inode.fs.flags.DebugFuse {
+			fh.inode.logFuse("< readFromPreLoadData", bytesRead)
+		}
+	}()
+
+	if uint64(offset) >= fh.inode.Attributes.Size {
+		// nothing to read
+		return
+	}
+
+	bytesRead, err := buffer.ReadAt(buf, offset)
+	if err != nil {
+		if err != io.EOF {
+			fh.inode.logFuse("< readFromStream error", bytesRead, err)
+		}
+	}
+	return
+}
 func (fh *FileHandle) readFromStream(offset int64, buf []byte) (bytesRead int, err error) {
 	defer func() {
 		if fh.inode.fs.flags.DebugFuse {

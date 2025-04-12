@@ -51,6 +51,7 @@ type FlagStorage struct {
 	TypeCacheTTL   time.Duration
 	HTTPTimeout    time.Duration
 	ReadAheadChunk uint32
+	PreLoadAData bool
 
 	// Debugging
 	DebugFuse  bool
