@@ -251,12 +251,11 @@ func NewApp() (app *cli.App) {
 				Usage: "Read ahead size in MiB for S3 range requests.",
 			},
 
-            cli.IntFlag{
+			cli.IntFlag{
 				Name:  "preload-all-data",
 				Value: 20,
 				Usage: "Preload file content into memory buffer",
 			},
-
 
 			/////////////////////////
 			// Debugging
@@ -276,7 +275,6 @@ func NewApp() (app *cli.App) {
 				Name:  "f",
 				Usage: "Run goofys in foreground.",
 			},
-
 		},
 	}
 
@@ -349,8 +347,7 @@ func PopulateFlags(c *cli.Context) (ret *FlagStorage) {
 		TypeCacheTTL:   c.Duration("type-cache-ttl"),
 		HTTPTimeout:    c.Duration("http-timeout"),
 		ReadAheadChunk: uint32(c.Int("read-ahead-chunk")),
-        PreLoadData: c.Bool("preload-data"),
-
+		PreLoadData:    c.Bool("preload-data"),
 
 		// Common Backend Config
 		Endpoint:       c.String("endpoint"),

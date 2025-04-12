@@ -645,7 +645,7 @@ func (fh *FileHandle) readFromPreLoadData(offset int64, buf []byte) (bytesRead i
 		return
 	}
 
-	bytesRead, err := buffer.ReadAt(buf, offset)
+	bytesRead, err = buffer.ReadAt(buf, offset)
 	if err != nil {
 		if err != io.EOF {
 			fh.inode.logFuse("< readFromStream error", bytesRead, err)
