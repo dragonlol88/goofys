@@ -251,9 +251,8 @@ func NewApp() (app *cli.App) {
 				Usage: "Read ahead size in MiB for S3 range requests.",
 			},
 
-			cli.IntFlag{
-				Name:  "preload-all-data",
-				Value: 20,
+			cli.BoolFlag{
+				Name:  "preload-data",
 				Usage: "Preload file content into memory buffer",
 			},
 
@@ -289,7 +288,7 @@ func NewApp() (app *cli.App) {
 		flagCategories[f] = "aws"
 	}
 
-	for _, f := range []string{"cheap", "no-implicit-dir", "stat-cache-ttl", "type-cache-ttl", "http-timeout", "read-ahead-chunk", "preload-all-data"} {
+	for _, f := range []string{"cheap", "no-implicit-dir", "stat-cache-ttl", "type-cache-ttl", "http-timeout", "read-ahead-chunk", "preload-data"} {
 		flagCategories[f] = "tuning"
 	}
 
