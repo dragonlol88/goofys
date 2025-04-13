@@ -14,3 +14,12 @@ build:
 
 install:
 	go install -ldflags "-X main.Version=`git rev-parse HEAD`"
+
+docker-build:
+    docker build --build-arg AWS_ACCESS_KEY_ID=${aws_access_key} --build-arg AWS_SECRET_ACCESS_KEY=${aws_secret_access_key} -t goofysimage:lastest .
+
+
+
+
+
+
