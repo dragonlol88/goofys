@@ -82,23 +82,6 @@ func NewFileHandle(inode *Inode, opMetadata fuseops.OpContext) *FileHandle {
 	fh := &FileHandle{inode: inode, Tgid: tgid}
 	fh.cloud, fh.key = inode.cloud()
 
-	fs := fh.inode.fs
-
-	preLoadData := fs.flags.PreLoadData
-
-	if preLoadData {
-
-		resp, err := fh.cloud.GetBlob(&GetBlobInput{
-			Key: fh.key,
-		})
-
-		if err != nil {
-			fuseLog.Errorf("Failed to load preloaded blob: %v", err)
-		}
-		// Read Data from requestBody for preloading
-		bytesRead, err := fh.dataBuffer.ReadFrom(resp.Body)
-		fh.inode.logFuse("PreLoadData", bytesRead)
-	}
 	return fh
 }
 
@@ -502,6 +485,25 @@ func (fh *FileHandle) ReadFile(offset int64, buf []byte) (bytesRead int, err err
 
 	fh.mu.Lock()
 	defer fh.mu.Unlock()
+
+	fs := fh.inode.fs
+
+	preLoadData := fs.flags.PreLoadData
+	bufferSize := fh.dataBuffer.Len()
+
+	if preLoadData && bufferSize == 0 {
+
+		resp, err := fh.cloud.GetBlob(&GetBlobInput{
+			Key: fh.key,
+		})
+
+		if err != nil {
+			fuseLog.Errorf("Failed to load preloaded blob: %v", err)
+		}
+		// Read Data from requestBody for preloading
+		fileSize, err := fh.dataBuffer.ReadFrom(resp.Body)
+		fh.inode.logFuse("PreLoadData", fileSize)
+	}
 
 	nwant := len(buf)
 	var nread int
