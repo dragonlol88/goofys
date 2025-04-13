@@ -30,7 +30,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 
 
 RUN git config --global credential.UseHttpPath true && \
-    git config --global credential.helper '!aws --profile mlops codecommit credential-helper $@' && \
+    git config --global credential.helper '!aws codecommit credential-helper $@' && \
     git clone https://git-codecommit.ap-northeast-2.amazonaws.com/v1/repos/goofys && \
     cd goofys && \
     make build && \
