@@ -401,7 +401,7 @@ func listBlobsSafe(cloud StorageBackend, param *ListBlobsInput) (*ListBlobsOutpu
 		nextReq := &ListBlobsInput{
 			// Inherit Prefix, Delimiter, MaxKeys from original request.
 			Prefix:    param.Prefix,
-			// Delimiter: param.Delimiter,
+			Delimiter: nil,
 			MaxKeys:   param.MaxKeys,
 			// Get the continuation token from the result.
 			ContinuationToken: res.NextContinuationToken,
