@@ -394,7 +394,7 @@ func (s *S3Backend) ListBlobs(param *ListBlobsInput) (*ListBlobsOutput, error) {
 	resp, reqId, err := s.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket:            &s.bucket,
 		Prefix:            param.Prefix,
-		Delimiter:         param.Delimiter,
+// 		Delimiter:         param.Delimiter,
 		MaxKeys:           maxKeys,
 		StartAfter:        param.StartAfter,
 		ContinuationToken: param.ContinuationToken,
