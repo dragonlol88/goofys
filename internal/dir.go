@@ -450,7 +450,7 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 	// 3. when we serve the entry we added last, signal that next
 	//    time we need to list from cloud again with continuation
 	//    token
-//     dirs := make(map[*Inode]bool)
+    dirs := make(map[*Inode]bool)
 
 	for dh.lastFromCloud == nil && !dh.done {
 		if dh.Marker == nil {
