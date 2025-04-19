@@ -401,7 +401,7 @@ func listBlobsSafe(cloud StorageBackend, param *ListBlobsInput) (*ListBlobsOutpu
 		nextReq := &ListBlobsInput{
 			// Inherit Prefix, Delimiter, MaxKeys from original request.
 			Prefix:    param.Prefix,
-			Delimiter: param.Delimiter,
+			// Delimiter: param.Delimiter,
 			MaxKeys:   param.MaxKeys,
 			// Get the continuation token from the result.
 			ContinuationToken: res.NextContinuationToken,
@@ -505,6 +505,7 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 			dh.lastFromCloud = &dirName
 		}
 
+        dirs := make(map[*Inode]bool)
 		for _, obj := range resp.Items {
 			if !strings.HasPrefix(*obj.Key, prefix) {
 				// other slurped objects that we cached
@@ -533,7 +534,9 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 			} else {
 				// this is a slurped up object which
 				// was already cached
+                parent.insertSubTree(baseName, &obj, dirs)
 				baseName = baseName[:slash]
+
 			}
 
 			if dh.lastFromCloud == nil ||
@@ -561,6 +564,21 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 	// `offset`. A stale inode is one that existed before the
 	// first ListBlobs for this dir handle, but is not being
 	// written to (ie: not a new file)
+
+
+    for d, sealed := range dirs {
+        if d == dh.inode {
+            // never seal the current dir because that's
+            // handled at upper layer
+            continue
+        }
+
+        if sealed || !resp.IsTruncated {
+            d.dir.DirTime = time.Now()
+            d.Attributes.Mtime = d.findChildMaxTime()
+        }
+    }
+
 	var child *Inode
 	for int(offset) < len(parent.dir.Children) {
 		// Note on locking: See comments at Inode::AttrTime, Inode::Parent.
