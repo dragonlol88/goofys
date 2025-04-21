@@ -275,10 +275,10 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 
 
         reader := bytes.NewReader(data)
-		nCopied, err := fh.dataBuffer.ReadFrom(reader)
+		nCopied, read_error := fh.dataBuffer.ReadFrom(reader)
         if err != nil {
             fh.inode.logFuse("> PreLoad write failed to read from reader", err)
-            return
+            return read_error
         }
         fh.nextWriteOffset += int64(nCopied)
         fh.inode.Attributes.Size = uint64(fh.nextWriteOffset)
@@ -287,7 +287,7 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
         data = data[nCopied:]
 
 		if len(data) == 0 {
-		    return
+		    return read_error
 		}
 	}
 
