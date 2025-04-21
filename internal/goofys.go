@@ -883,13 +883,13 @@ func (fs *Goofys) OpenFile(
 	in := fs.getInodeOrDie(op.Inode)
 	fs.mu.RUnlock()
 
-    var fh FileHandle
-    if _, ok := fs.noSyncInodesFh[in.InodeID]; ok {
-        fh := fs.noSyncInodesFh[in.InodeID]
+    var fh *FileHandle
+    if _, ok := fs.noSyncInodesFh[in.Id]; ok {
+        fh := fs.noSyncInodesFh[in.Id]
     } else {
         fh, err := in.OpenFile(op.OpContext)
         if err != nil {
-            return
+            return err
 	    }
     }
 
@@ -924,7 +924,7 @@ func (fs *Goofys) OpenFile(
 	fh.keepPageCache = op.KeepPageCache
 	in.invalidateCache = false
 
-	return
+	return nil
 }
 
 func (fs *Goofys) ReadFile(
