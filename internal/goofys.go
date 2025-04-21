@@ -92,6 +92,7 @@ type Goofys struct {
 	restorers   *Ticket
 
 	forgotCnt uint32
+	noSyncInodesFh map[fuseops.InodeID]*FileHandle
 }
 
 var s3Log = GetLogger("s3")
@@ -882,10 +883,16 @@ func (fs *Goofys) OpenFile(
 	in := fs.getInodeOrDie(op.Inode)
 	fs.mu.RUnlock()
 
-	fh, err := in.OpenFile(op.OpContext)
-	if err != nil {
-		return
-	}
+    var fh FileHandle
+    if _, ok := fs.noSyncInodesFh[in.InodeID]; ok {
+        fh := fs.noSyncInodesFh[in.InodeID]
+    } else {
+        fh, err := in.OpenFile(op.OpContext)
+        if err != nil {
+            return
+	    }
+    }
+
 
 	fs.mu.Lock()
 

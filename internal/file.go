@@ -66,6 +66,7 @@ type FileHandle struct {
 
 	keepPageCache bool // the same value we returned to OpenFile
 	dataBuffer    bytes.Buffer
+	noSync bool
 }
 
 const MAX_READAHEAD = uint32(400 * 1024 * 1024)
@@ -789,11 +790,43 @@ func (fh *FileHandle) FlushFile() (err error) {
 	defer fh.mu.Unlock()
 
 	fh.inode.logFuse("FlushFile")
+    parent := fh.inode.Parent
 
     if fh.inode.fs.flags.PreLoadData {
-           fileSize := fh.dataBuffer.Len()
-           fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
-           return nil
+        dirs := make(map[*Inode]bool)
+        fileSize := fh.dataBuffer.Len()
+        baseName := *fh.inode.Name
+        parent.insertSubTree(
+           baseName,
+           &BlobItemOutput{
+                Key:          baseName,
+                ETag:         nil,
+                LastModified: time.Now(),
+                Size:         uint64(fileSize),
+                StorageClass: "STANDARD",
+            },
+            dirs
+           )
+
+        for d, sealed := range dirs {
+            if d == dh.inode {
+                // never seal the current dir because that's
+                // handled at upper layer
+                continue
+            }
+
+            if sealed {
+
+                // sealed가 true일 때 실행할 로직
+                fh.inode.fs.noSyncInodesFh[d.InodeId] = fh
+                fh.noSync = true
+                fuseLog.Debug("%v sealed", *d.Name)
+            }
+            d.dir.DirTime = time.Now()
+            d.Attributes.Mtime = d.findChildMaxTime()
+        }
+        fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
+        return nil
     }
 
 	if !fh.dirty || fh.lastWriteError != nil {
