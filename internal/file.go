@@ -791,9 +791,9 @@ func (fh *FileHandle) FlushFile() (err error) {
 
 	fh.inode.logFuse("FlushFile")
 
-    if fh.inode.flags.PreLoadData {
+    if fh.inode.fs.flags.PreLoadData {
            fileSize := fh.dataBuffer.Len()
-           fh.inode.fuseLog(" > PreLoadData Writefile Flush", fileSize)
+           fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
            return nil
     }
 
