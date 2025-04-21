@@ -235,6 +235,8 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 	fh.mu.Lock()
 	defer fh.mu.Unlock()
 
+    fs := fh.inode.fs
+
 	if fh.lastWriteError != nil {
 		fh.inode.mu.Lock()
 		// our write failed, next time we open we should not
@@ -269,13 +271,24 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
     preLoadData := fs.flags.PreLoadData
 	bufferSize := fh.dataBuffer.Len()
 
-	if preLoadData && bufferSize == 0 {
-		nCopied, err := fh.dataBuffer.ReadFrom(data)
+	for preLoadData && bufferSize == 0 {
+
+
+        reader := bytes.NewReader(data)
+		nCopied, err := fh.dataBuffer.ReadFrom(reader)
+        if err != nil {
+            logFuse.Debugf("PreLoad write failed to read from reader", err)
+        }
         fh.nextWriteOffset += int64(nCopied)
         fh.inode.Attributes.Size = uint64(fh.nextWriteOffset)
     	fh.inode.Attributes.Mtime = time.Now()
         fh.inode.logFuse("Preload Writefile", fileSize)
-		return
+        data = data[nCopied:]
+
+
+		if len(data) == 0 {
+		    return
+		}
 	}
 
 
