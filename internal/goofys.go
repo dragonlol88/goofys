@@ -822,6 +822,12 @@ func (fs *Goofys) ReadDir(
 
 	inode := dh.inode
 	inode.logFuse("ReadDir", op.Offset)
+    defer func() {
+		if fs.flags.DebugFuse && fs.flags.PreLoadData {
+			fh.inode.logFuse("< PreLoadDir")
+		}
+	}()
+
 
 	dh.mu.Lock()
 	defer dh.mu.Unlock()

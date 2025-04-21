@@ -266,6 +266,19 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 		fh.inode.mu.Unlock()
 	}
 
+    preLoadData := fs.flags.PreLoadData
+	bufferSize := fh.dataBuffer.Len()
+
+	if preLoadData && bufferSize == 0 {
+		nCopied, err := fh.dataBuffer.ReadFrom(data)
+        fh.nextWriteOffset += int64(nCopied)
+        fh.inode.Attributes.Size = uint64(fh.nextWriteOffset)
+    	fh.inode.Attributes.Mtime = time.Now()
+        fh.inode.logFuse("Preload Writefile", fileSize)
+		return
+	}
+
+
 	for {
 		if fh.buf == nil {
 			fh.buf = MBuf{}.Init(fh.poolHandle, fh.partSize(), true)

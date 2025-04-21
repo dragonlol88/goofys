@@ -437,6 +437,7 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 
 	parent := dh.inode
 	fs := parent.fs
+    dirs := make(map[*Inode]bool)
 
 	// the dir expired, so we need to fetch from the cloud. there
 	// maybe static directories that we want to keep, so cloud
@@ -450,8 +451,6 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 	// 3. when we serve the entry we added last, signal that next
 	//    time we need to list from cloud again with continuation
 	//    token
-    dirs := make(map[*Inode]bool)
-
 	for dh.lastFromCloud == nil && !dh.done {
 		if dh.Marker == nil {
 			// Marker, lastFromCloud are nil => We just started
@@ -535,7 +534,10 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 			} else {
 				// this is a slurped up object which
 				// was already cached
-                parent.insertSubTree(baseName, &obj, dirs)
+
+				if fs.flags.PreLoadData {
+                    parent.insertSubTree(baseName, &obj, dirs)
+				}
 				baseName = baseName[:slash]
 
 			}
@@ -545,6 +547,26 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 				dh.lastFromCloud = &baseName
 			}
 		}
+
+        for d, sealed := range dirs {
+            if d == dh.inode {
+                // never seal the current dir because that's
+                // handled at upper layer
+                continue
+            }
+
+            if sealed {
+                // sealed가 true일 때 실행할 로직
+                fuseLog.Debug("%v sealed", *d.Name)
+            }
+
+
+            if !resp.IsTruncated {
+                d.dir.DirTime = time.Now()
+                d.Attributes.Mtime = d.findChildMaxTime()
+            }
+        }
+
 
 		parent.mu.Unlock()
 		fs.mu.Unlock()
