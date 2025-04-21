@@ -269,7 +269,6 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 	}
 
     preLoadData := fs.flags.PreLoadData
-	bufferSize := fh.dataBuffer.Len()
 
 	if preLoadData {
 
