@@ -271,8 +271,7 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
     preLoadData := fs.flags.PreLoadData
 	bufferSize := fh.dataBuffer.Len()
 
-	for preLoadData && bufferSize == 0 {
-
+	if preLoadData {
 
         reader := bytes.NewReader(data)
 		nCopied, read_error := fh.dataBuffer.ReadFrom(reader)
@@ -791,6 +790,12 @@ func (fh *FileHandle) FlushFile() (err error) {
 	defer fh.mu.Unlock()
 
 	fh.inode.logFuse("FlushFile")
+
+    if fh.inode.flags.PreLoadData {
+           fileSize := fh.dataBuffer.Len()
+           fh.inode.fuseLog(" > PreLoadData Writefile Flush", fileSize)
+           return nil
+    }
 
 	if !fh.dirty || fh.lastWriteError != nil {
 		if fh.lastWriteError != nil {
