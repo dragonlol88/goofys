@@ -885,9 +885,9 @@ func (fs *Goofys) OpenFile(
 
     var fh *FileHandle
     if _, ok := fs.noSyncInodesFh[in.Id]; ok {
-        fh := fs.noSyncInodesFh[in.Id]
+        fh = fs.noSyncInodesFh[in.Id]
     } else {
-        fh, err := in.OpenFile(op.OpContext)
+        fh, err = in.OpenFile(op.OpContext)
         if err != nil {
             return err
 	    }

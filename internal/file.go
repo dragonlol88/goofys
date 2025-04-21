@@ -795,20 +795,17 @@ func (fh *FileHandle) FlushFile() (err error) {
     if fh.inode.fs.flags.PreLoadData {
         dirs := make(map[*Inode]bool)
         fileSize := fh.dataBuffer.Len()
-        baseName := *fh.inode.Name
+        baseName := fh.inode.Name
         storageClass := "STANDARD"
-        parent.insertSubTree(
-           baseName,
-           &BlobItemOutput{
+        nowTime := time.Now()
+        content := BlobItemOutput{
                 Key:          baseName,
                 ETag:         nil,
-                LastModified: &time.Now(),
+                LastModified: &nowTime,
                 Size:         uint64(fileSize),
                 StorageClass: &storageClass,
-            },
-            dirs
-           )
-
+            }
+        parent.insertSubTree(*baseName, &content, dirs)
         for d, sealed := range dirs {
             if d == fh.inode {
                 // never seal the current dir because that's
@@ -819,7 +816,7 @@ func (fh *FileHandle) FlushFile() (err error) {
             if sealed {
 
                 // sealed가 true일 때 실행할 로직
-                fh.inode.fs.noSyncInodesFh[d.Id] = &fh
+                fh.inode.fs.noSyncInodesFh[d.Id] = fh
                 fh.noSync = true
                 fuseLog.Debug("%v sealed", *d.Name)
             }
