@@ -437,7 +437,7 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 
 	parent := dh.inode
 	fs := parent.fs
-    dirs := make(map[*Inode]bool)
+	dirs := make(map[*Inode]bool)
 
 	// the dir expired, so we need to fetch from the cloud. there
 	// maybe static directories that we want to keep, so cloud
@@ -536,7 +536,7 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 				// was already cached
 
 				if fs.flags.PreLoadData {
-                    parent.insertSubTree(baseName, &obj, dirs)
+					parent.insertSubTree(baseName, &obj, dirs)
 				}
 				baseName = baseName[:slash]
 
@@ -548,25 +548,22 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 			}
 		}
 
-        for d, sealed := range dirs {
-            if d == dh.inode {
-                // never seal the current dir because that's
-                // handled at upper layer
-                continue
-            }
+		for d, sealed := range dirs {
+			if d == dh.inode {
+				// never seal the current dir because that's
+				// handled at upper layer
+				continue
+			}
 
-            if sealed {
-                // sealed가 true일 때 실행할 로직
-                fuseLog.Debug("%v sealed", *d.Name)
-            }
+			if sealed {
+				fuseLog.Debug("%v sealed", *d.Name)
+			}
 
-
-            if !resp.IsTruncated {
-                d.dir.DirTime = time.Now()
-                d.Attributes.Mtime = d.findChildMaxTime()
-            }
-        }
-
+			if !resp.IsTruncated {
+				d.dir.DirTime = time.Now()
+				d.Attributes.Mtime = d.findChildMaxTime()
+			}
+		}
 
 		parent.mu.Unlock()
 		fs.mu.Unlock()
@@ -588,19 +585,18 @@ func (dh *DirHandle) ReadDir(offset fuseops.DirOffset) (en *DirHandleEntry, err 
 	// first ListBlobs for this dir handle, but is not being
 	// written to (ie: not a new file)
 
-
-//     for d, sealed := range dirs {
-//         if d == dh.inode {
-//             // never seal the current dir because that's
-//             // handled at upper layer
-//             continue
-//         }
-//
-//         if sealed || !resp.IsTruncated {
-//             d.dir.DirTime = time.Now()
-//             d.Attributes.Mtime = d.findChildMaxTime()
-//         }
-//     }
+	//     for d, sealed := range dirs {
+	//         if d == dh.inode {
+	//             // never seal the current dir because that's
+	//             // handled at upper layer
+	//             continue
+	//         }
+	//
+	//         if sealed || !resp.IsTruncated {
+	//             d.dir.DirTime = time.Now()
+	//             d.Attributes.Mtime = d.findChildMaxTime()
+	//         }
+	//     }
 
 	var child *Inode
 	for int(offset) < len(parent.dir.Children) {

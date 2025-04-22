@@ -66,7 +66,7 @@ type FileHandle struct {
 
 	keepPageCache bool // the same value we returned to OpenFile
 	dataBuffer    bytes.Buffer
-	noSync bool
+	noSync        bool
 }
 
 const MAX_READAHEAD = uint32(400 * 1024 * 1024)
@@ -236,7 +236,7 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 	fh.mu.Lock()
 	defer fh.mu.Unlock()
 
-    fs := fh.inode.fs
+	fs := fh.inode.fs
 
 	if fh.lastWriteError != nil {
 		fh.inode.mu.Lock()
@@ -269,27 +269,26 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 		fh.inode.mu.Unlock()
 	}
 
-    preLoadData := fs.flags.PreLoadData
+	preLoadData := fs.flags.PreLoadData
 
 	if preLoadData {
 
-        reader := bytes.NewReader(data)
+		reader := bytes.NewReader(data)
 		nCopied, read_error := fh.dataBuffer.ReadFrom(reader)
-        if err != nil {
-            fh.inode.logFuse("> PreLoad write failed to read from reader", err)
-            return read_error
-        }
-        fh.nextWriteOffset += int64(nCopied)
-        fh.inode.Attributes.Size = uint64(fh.nextWriteOffset)
-    	fh.inode.Attributes.Mtime = time.Now()
-        fh.inode.logFuse("Preload Writefile", nCopied)
-        data = data[nCopied:]
+		if err != nil {
+			fh.inode.logFuse("> PreLoad write failed to read from reader", err)
+			return read_error
+		}
+		fh.nextWriteOffset += int64(nCopied)
+		fh.inode.Attributes.Size = uint64(fh.nextWriteOffset)
+		fh.inode.Attributes.Mtime = time.Now()
+		fh.inode.logFuse("Preload Writefile", nCopied)
+		data = data[nCopied:]
 
 		if len(data) == 0 {
-		    return read_error
+			return read_error
 		}
 	}
-
 
 	for {
 		if fh.buf == nil {
@@ -790,42 +789,46 @@ func (fh *FileHandle) FlushFile() (err error) {
 	defer fh.mu.Unlock()
 
 	fh.inode.logFuse("FlushFile")
-    parent := fh.inode.Parent
+	parent := fh.inode.Parent
 
-    if fh.inode.fs.flags.PreLoadData {
-        dirs := make(map[*Inode]bool)
-        fileSize := fh.dataBuffer.Len()
-        baseName := fh.inode.Name
-        storageClass := "STANDARD"
-        nowTime := time.Now()
-        content := BlobItemOutput{
-                Key:          baseName,
-                ETag:         nil,
-                LastModified: &nowTime,
-                Size:         uint64(fileSize),
-                StorageClass: &storageClass,
-            }
-        parent.insertSubTree(*baseName, &content, dirs)
-        for d, sealed := range dirs {
-            if d == fh.inode {
-                // never seal the current dir because that's
-                // handled at upper layer
-                continue
-            }
+	if fh.inode.fs.flags.PreLoadData {
 
-            if sealed {
+		fh.inode.fs.mu.Lock()
+		defer fh.inode.fs.mu.Unlock()
+		parent.mu.Lock()
+		defer parent.mu.Unlock()
 
-                // sealed가 true일 때 실행할 로직
-                fh.inode.fs.noSyncInodesFh[d.Id] = fh
-                fh.noSync = true
-                fuseLog.Debug("%v sealed", *d.Name)
-            }
-            d.dir.DirTime = time.Now()
-            d.Attributes.Mtime = d.findChildMaxTime()
-        }
-        fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
-        return nil
-    }
+		dirs := make(map[*Inode]bool)
+		fileSize := fh.dataBuffer.Len()
+		baseName := fh.inode.Name
+		storageClass := "STANDARD"
+		nowTime := time.Now()
+
+		content := BlobItemOutput{
+			Key:          baseName,
+			ETag:         nil,
+			LastModified: &nowTime,
+			Size:         uint64(fileSize),
+			StorageClass: &storageClass,
+		}
+
+		parent.insertSubTree(*baseName, &content, dirs)
+
+		fh.inode.fs.noSyncInodesFh[fh.inode.Id] = fh
+
+		for d, _ := range dirs {
+			if d == fh.inode {
+				// never seal the current dir because that's
+				// handled at upper layer
+				continue
+			}
+
+			d.dir.DirTime = time.Now()
+			d.Attributes.Mtime = d.findChildMaxTime()
+		}
+		fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
+		return nil
+	}
 
 	if !fh.dirty || fh.lastWriteError != nil {
 		if fh.lastWriteError != nil {

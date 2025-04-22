@@ -91,7 +91,7 @@ type Goofys struct {
 	replicators *Ticket
 	restorers   *Ticket
 
-	forgotCnt uint32
+	forgotCnt      uint32
 	noSyncInodesFh map[fuseops.InodeID]*FileHandle
 }
 
@@ -235,6 +235,7 @@ func newGoofys(ctx context.Context, bucket string, flags *FlagStorage,
 	fs.dirHandles = make(map[fuseops.HandleID]*DirHandle)
 
 	fs.fileHandles = make(map[fuseops.HandleID]*FileHandle)
+	fs.noSyncInodesFh = make(map[fuseops.InodeID]*FileHandle)
 
 	fs.replicators = Ticket{Total: 16}.Init()
 	fs.restorers = Ticket{Total: 20}.Init()
@@ -823,12 +824,11 @@ func (fs *Goofys) ReadDir(
 
 	inode := dh.inode
 	inode.logFuse("ReadDir", op.Offset)
-    defer func() {
+	defer func() {
 		if fs.flags.DebugFuse && fs.flags.PreLoadData {
-		    dh.inode.logFuse("< PreLoadDir")
+			dh.inode.logFuse("< PreLoadDir")
 		}
 	}()
-
 
 	dh.mu.Lock()
 	defer dh.mu.Unlock()
@@ -883,16 +883,17 @@ func (fs *Goofys) OpenFile(
 	in := fs.getInodeOrDie(op.Inode)
 	fs.mu.RUnlock()
 
-    var fh *FileHandle
-    if _, ok := fs.noSyncInodesFh[in.Id]; ok {
-        fh = fs.noSyncInodesFh[in.Id]
-    } else {
-        fh, err = in.OpenFile(op.OpContext)
-        if err != nil {
-            return err
-	    }
-    }
-
+	var fh *FileHandle
+	if _, ok := fs.noSyncInodesFh[in.Id]; ok {
+		fh = fs.noSyncInodesFh[in.Name]
+		atomic.AddInt32(&in.fileHandles, 1)
+		in.logFuse("OpenFile from no sync file", *in.Name)
+	} else {
+		fh, err = in.OpenFile(op.OpContext)
+		if err != nil {
+			return err
+		}
+	}
 
 	fs.mu.Lock()
 
