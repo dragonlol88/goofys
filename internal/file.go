@@ -247,7 +247,7 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 		return fh.lastWriteError
 	}
 
-	if offset != fh.nextWriteOffset {
+	if offset != fh.nextWriteOffset && fh.noSync == false {
 		fh.inode.errFuse("WriteFile: only sequential writes supported", fh.nextWriteOffset, offset)
 		fh.lastWriteError = syscall.ENOTSUP
 		return fh.lastWriteError
@@ -271,7 +271,7 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 
 	preLoadData := fs.flags.PreLoadData
 
-	if preLoadData {
+	if preLoadData && fh.noSync == false {
 
 		reader := bytes.NewReader(data)
 		nCopied, read_error := fh.dataBuffer.ReadFrom(reader)
@@ -791,7 +791,12 @@ func (fh *FileHandle) FlushFile() (err error) {
 	fh.inode.logFuse("FlushFile")
 	parent := fh.inode.Parent
 
-	if fh.inode.fs.flags.PreLoadData {
+	if fh.noSync {
+		fh.inode.logFuse(" > PreLoadData Writefile Flush already loaded")
+		return nil
+	}
+
+	if fh.inode.fs.flags.PreLoadData && fh.noSync == false {
 
 		fh.inode.fs.mu.Lock()
 		defer fh.inode.fs.mu.Unlock()
@@ -815,6 +820,7 @@ func (fh *FileHandle) FlushFile() (err error) {
 		parent.insertSubTree(*baseName, &content, dirs)
 
 		fh.inode.fs.noSyncInodesFh[fh.inode.Id] = fh
+		fh.noSync = true
 
 		for d, _ := range dirs {
 			if d == fh.inode {
