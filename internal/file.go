@@ -271,6 +271,10 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 
 	preLoadData := fs.flags.PreLoadData
 
+	if fh.noSync == true {
+		fh.inode.logFuse("Preload already data loaded")
+		return nil
+	}
 	if preLoadData && fh.noSync == false {
 
 		reader := bytes.NewReader(data)
