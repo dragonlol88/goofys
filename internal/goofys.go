@@ -885,7 +885,7 @@ func (fs *Goofys) OpenFile(
 
 	var fh *FileHandle
 	if _, ok := fs.noSyncInodesFh[in.Id]; ok {
-		fh = fs.noSyncInodesFh[in.Name]
+		fh = fs.noSyncInodesFh[in.Id]
 		atomic.AddInt32(&in.fileHandles, 1)
 		in.logFuse("OpenFile from no sync file", *in.Name)
 	} else {
