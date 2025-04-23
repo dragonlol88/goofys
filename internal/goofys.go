@@ -628,7 +628,9 @@ func (fs *Goofys) LookUpInode(
 
 	if !ok {
 		var newInode *Inode
-
+		if inode == nil {
+			return fuse.ENOENT
+		}
 		newInode, err = parent.LookUp(op.Name)
 		if err == fuse.ENOENT && inode != nil && inode.isDir() {
 			// we may not be able to look up an implicit
