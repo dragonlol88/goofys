@@ -236,8 +236,6 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 	fh.mu.Lock()
 	defer fh.mu.Unlock()
 
-	fs := fh.inode.fs
-
 	if fh.lastWriteError != nil {
 		fh.inode.mu.Lock()
 		// our write failed, next time we open we should not
@@ -768,7 +766,6 @@ func (fh *FileHandle) FlushFile() (err error) {
 	defer fh.mu.Unlock()
 
 	fh.inode.logFuse("FlushFile")
-	parent := fh.inode.Parent
 
 	if !fh.dirty || fh.lastWriteError != nil {
 		if fh.lastWriteError != nil {

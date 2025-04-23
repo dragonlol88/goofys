@@ -234,8 +234,6 @@ func newGoofys(ctx context.Context, bucket string, flags *FlagStorage,
 	fs.dirHandles = make(map[fuseops.HandleID]*DirHandle)
 
 	fs.fileHandles = make(map[fuseops.HandleID]*FileHandle)
-	fs.noSyncInodesFh = make(map[fuseops.InodeID]*FileHandle)
-
 	fs.replicators = Ticket{Total: 16}.Init()
 	fs.restorers = Ticket{Total: 20}.Init()
 
@@ -882,7 +880,7 @@ func (fs *Goofys) OpenFile(
 	in := fs.getInodeOrDie(op.Inode)
 	fs.mu.RUnlock()
 
-	fh, err = in.OpenFile(op.OpContext)
+	fh, err := in.OpenFile(op.OpContext)
 	if err != nil {
 		return
 	}
