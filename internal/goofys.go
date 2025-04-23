@@ -885,7 +885,7 @@ func (fs *Goofys) OpenFile(
 	fh, err = in.OpenFile(op.OpContext)
 	if err != nil {
 		return
-
+	}
 	fs.mu.Lock()
 
 	handleID := fs.nextHandleID
