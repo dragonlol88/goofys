@@ -247,7 +247,7 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 		return fh.lastWriteError
 	}
 
-	if offset != fh.nextWriteOffset && fh.noSync == false {
+	if offset != fh.nextWriteOffset {
 		fh.inode.errFuse("WriteFile: only sequential writes supported", fh.nextWriteOffset, offset)
 		fh.lastWriteError = syscall.ENOTSUP
 		return fh.lastWriteError
@@ -267,31 +267,6 @@ func (fh *FileHandle) WriteFile(offset int64, data []byte) (err error) {
 		fh.inode.knownETag = nil
 		fh.inode.invalidateCache = false
 		fh.inode.mu.Unlock()
-	}
-
-	preLoadData := fs.flags.PreLoadData
-
-	if fh.noSync == true {
-		fh.inode.logFuse("Preload already data loaded")
-		return nil
-	}
-	if preLoadData && fh.noSync == false {
-
-		reader := bytes.NewReader(data)
-		nCopied, read_error := fh.dataBuffer.ReadFrom(reader)
-		if err != nil {
-			fh.inode.logFuse("> PreLoad write failed to read from reader", err)
-			return read_error
-		}
-		fh.nextWriteOffset += int64(nCopied)
-		fh.inode.Attributes.Size = uint64(fh.nextWriteOffset)
-		fh.inode.Attributes.Mtime = time.Now()
-		fh.inode.logFuse("Preload Writefile", nCopied)
-		data = data[nCopied:]
-
-		if len(data) == 0 {
-			return read_error
-		}
 	}
 
 	for {
@@ -794,51 +769,6 @@ func (fh *FileHandle) FlushFile() (err error) {
 
 	fh.inode.logFuse("FlushFile")
 	parent := fh.inode.Parent
-
-	if fh.noSync {
-		fh.inode.logFuse(" > PreLoadData Writefile Flush already loaded")
-		return nil
-	}
-
-	if fh.inode.fs.flags.PreLoadData && fh.noSync == false {
-
-		fh.inode.fs.mu.Lock()
-		defer fh.inode.fs.mu.Unlock()
-		parent.mu.Lock()
-		defer parent.mu.Unlock()
-
-		dirs := make(map[*Inode]bool)
-		fileSize := fh.dataBuffer.Len()
-		baseName := fh.inode.Name
-		storageClass := "STANDARD"
-		nowTime := time.Now()
-
-		content := BlobItemOutput{
-			Key:          baseName,
-			ETag:         nil,
-			LastModified: &nowTime,
-			Size:         uint64(fileSize),
-			StorageClass: &storageClass,
-		}
-
-		parent.insertSubTree(*baseName, &content, dirs)
-
-		fh.inode.fs.noSyncInodesFh[fh.inode.Id] = fh
-		fh.noSync = true
-
-		for d, _ := range dirs {
-			if d == fh.inode {
-				// never seal the current dir because that's
-				// handled at upper layer
-				continue
-			}
-
-			d.dir.DirTime = time.Now()
-			d.Attributes.Mtime = d.findChildMaxTime()
-		}
-		fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
-		return nil
-	}
 
 	if !fh.dirty || fh.lastWriteError != nil {
 		if fh.lastWriteError != nil {

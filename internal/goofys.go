@@ -91,8 +91,7 @@ type Goofys struct {
 	replicators *Ticket
 	restorers   *Ticket
 
-	forgotCnt      uint32
-	noSyncInodesFh map[fuseops.InodeID]*FileHandle
+	forgotCnt uint32
 }
 
 var s3Log = GetLogger("s3")
@@ -883,17 +882,9 @@ func (fs *Goofys) OpenFile(
 	in := fs.getInodeOrDie(op.Inode)
 	fs.mu.RUnlock()
 
-	var fh *FileHandle
-	if _, ok := fs.noSyncInodesFh[in.Id]; ok {
-		fh = fs.noSyncInodesFh[in.Id]
-		atomic.AddInt32(&in.fileHandles, 1)
-		in.logFuse("OpenFile from no sync file", *in.Name)
-	} else {
-		fh, err = in.OpenFile(op.OpContext)
-		if err != nil {
-			return err
-		}
-	}
+	fh, err = in.OpenFile(op.OpContext)
+	if err != nil {
+		return
 
 	fs.mu.Lock()
 
@@ -925,7 +916,7 @@ func (fs *Goofys) OpenFile(
 	fh.keepPageCache = op.KeepPageCache
 	in.invalidateCache = false
 
-	return nil
+	return
 }
 
 func (fs *Goofys) ReadFile(
