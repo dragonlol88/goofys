@@ -832,9 +832,10 @@ func (fh *FileHandle) FlushFile() (err error) {
 				// handled at upper layer
 				continue
 			}
-
+                        
 			d.dir.DirTime = time.Now()
 			d.Attributes.Mtime = d.findChildMaxTime()
+		
 		}
 		fh.inode.logFuse(" > PreLoadData Writefile Flush", fileSize)
 		return nil
